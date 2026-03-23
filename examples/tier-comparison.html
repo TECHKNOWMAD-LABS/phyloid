@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<!--
+  examples/tier-comparison.html
+  Demonstrates the Stripe pricing tier system — shows how free/pro/enterprise
+  limits affect organism count and detail level.
+
+  Usage:
+    npx serve .   (from repo root)
+    open http://localhost:3000/examples/tier-comparison.html
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phyloid — Tier Comparison Example</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0a2e; color: #e0e0f0; font-family: system-ui, sans-serif;
+           display: flex; flex-direction: column; min-height: 100vh; }
+    header { padding: 20px 32px; border-bottom: 1px solid rgba(100,200,180,0.2); }
+    header h1 { color: #00ffaa; margin-bottom: 4px; }
+    header p { color: #8888aa; font-size: 0.85rem; }
+    .tier-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+                 padding: 24px 32px; flex: 1; }
+    .tier-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(100,200,180,0.15);
+                 border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+    .tier-card.pro { border-color: rgba(0,170,255,0.4); }
+    .tier-card.enterprise { border-color: rgba(0,255,170,0.4); }
+    .tier-header { padding: 16px 20px; background: rgba(0,0,0,0.3); }
+    .tier-name { font-weight: 700; font-size: 1.1rem; }
+    .tier-price { color: #8888aa; font-size: 0.85rem; margin-top: 2px; }
+    .tier-canvas { height: 220px; background: #060620; position: relative; }
+    canvas { display: block; }
+    .tier-features { padding: 14px 20px; font-size: 0.8rem; color: #aaaacc; }
+    .tier-features li { margin-bottom: 4px; list-style: none; padding-left: 12px;
+                        position: relative; }
+    .tier-features li::before { content: "•"; position: absolute; left: 0; color: #00ffaa; }
+    .tier-limits { padding: 10px 20px 16px; font-size: 0.75rem;
+                   color: #66cc99; border-top: 1px solid rgba(100,200,180,0.1); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Phyloid Tier Comparison</h1>
+    <p>Demonstrates how Free / Researcher / Laboratory tiers affect organism count and detail level.</p>
+  </header>
+  <div class="tier-grid" id="tier-grid"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script>
+    const TIERS = [
+      { id: 'free',       name: 'Explorer',    price: '$0/mo',  maxOrganisms: 5,   maxDetail: 2,
+        features: ['Up to 5 organisms', 'Detail levels 0-2', '3 gallery uploads/mo'],
+        color: [0.3, 0.8, 0.5] },
+      { id: 'pro',        name: 'Researcher',  price: '$12/mo', maxOrganisms: 50,  maxDetail: 4,
+        features: ['Up to 50 organisms', 'Detail levels 0-4', '50 gallery uploads/mo', 'Export GLB/OBJ'],
+        color: [0.2, 0.5, 0.9] },
+      { id: 'enterprise', name: 'Laboratory',  price: '$49/mo', maxOrganisms: 500, maxDetail: 5,
+        features: ['Up to 500 organisms', 'Ultra detail (0-5)', 'Unlimited uploads', 'API access'],
+        color: [0.9, 0.5, 0.1] },
+    ];
+
+    const DEMO_COUNTS = [3, 8, 15]; // organisms shown per tier
+    const DEMO_DETAILS = [2, 4, 5]; // detail levels per tier
+
+    const grid = document.getElementById('tier-grid');
+
+    TIERS.forEach((tier, idx) => {
+      const card = document.createElement('div');
+      card.className = `tier-card ${tier.id}`;
+      card.innerHTML = `
+        <div class="tier-header">
+          <div class="tier-name">${tier.name}</div>
+          <div class="tier-price">${tier.price}</div>
+        </div>
+        <div class="tier-canvas" id="canvas-${tier.id}"></div>
+        <ul class="tier-features">
+          ${tier.features.map(f => `<li>${f}</li>`).join('')}
+        </ul>
+        <div class="tier-limits" id="limits-${tier.id}"></div>
+      `;
+      grid.appendChild(card);
+
+      // Set up Three.js scene in each canvas container
+      const container = card.querySelector(`#canvas-${tier.id}`);
+      const w = container.clientWidth || 300;
+      const h = 220;
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x060620);
+      const camera = new THREE.PerspectiveCamera(50, w/h, 0.1, 100);
+      camera.position.set(0, 0, 7);
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      container.appendChild(renderer.domElement);
+
+      scene.add(new THREE.AmbientLight(0x303060, 0.8));
+      const light = new THREE.DirectionalLight(0xffffff, 1);
+      light.position.set(5,5,5); scene.add(light);
+
+      const count = DEMO_COUNTS[idx];
+      const detail = DEMO_DETAILS[idx];
+      const meshes = [];
+
+      for (let i = 0; i < count; i++) {
+        const geo = new THREE.IcosahedronGeometry(0.5 + Math.random()*0.3, detail);
+        const pos = geo.getAttribute('position');
+        const colors = new Float32Array(pos.count * 3);
+        for (let v = 0; v < pos.count; v++) {
+          const f = Math.random();
+          colors[v*3]   = tier.color[0]*(1-f)+f;
+          colors[v*3+1] = tier.color[1]*f;
+          colors[v*3+2] = tier.color[2]*f*.8;
+        }
+        geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        const mat = new THREE.MeshPhongMaterial({ vertexColors:true, flatShading:true,
+          shininess:60, transparent:true, opacity:0.9 });
+        const mesh = new THREE.Mesh(geo, mat);
+        const angle = (i/count)*Math.PI*2;
+        const r = count > 1 ? 1.8 + count*0.1 : 0;
+        mesh.position.set(Math.cos(angle)*r, (Math.random()-.5)*0.5, Math.sin(angle)*r*.4);
+        scene.add(mesh); meshes.push(mesh);
+      }
+      card.querySelector(`#limits-${tier.id}`).textContent =
+        `Showing: ${count} organisms · Detail level ${detail}`;
+
+      const clock = new THREE.Clock();
+      function animate() {
+        requestAnimationFrame(animate);
+        const dt = clock.getDelta();
+        meshes.forEach(m => { m.rotation.y += dt*0.4; m.rotation.x += dt*0.1; });
+        renderer.render(scene, camera);
+      }
+      animate();
+    });
+  </script>
+</body>
+</html>

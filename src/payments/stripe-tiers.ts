@@ -58,18 +58,41 @@ export const TIERS: PricingTier[] = [
   },
 ];
 
+/**
+ * Look up a pricing tier by its string identifier.
+ * @param id - Tier ID (e.g. "free", "pro", "enterprise")
+ * @returns The matching PricingTier, or undefined if not found
+ */
 export function getTierById(id: string): PricingTier | undefined {
   return TIERS.find((t) => t.id === id);
 }
 
+/**
+ * Returns true if the user may create one more organism given their current count.
+ * @param tier - The user's active pricing tier
+ * @param currentCount - Number of organisms already created in the current world
+ * @returns true when currentCount < tier.maxOrganisms
+ */
 export function canCreateOrganism(tier: PricingTier, currentCount: number): boolean {
   return currentCount < tier.maxOrganisms;
 }
 
+/**
+ * Returns true if the requested detail level is within the tier's allowance.
+ * @param tier - The user's active pricing tier
+ * @param detail - IcosahedronGeometry detail level (0-5)
+ * @returns true when detail <= tier.maxDetail
+ */
 export function canUseDetail(tier: PricingTier, detail: number): boolean {
   return detail <= tier.maxDetail;
 }
 
+/**
+ * Returns true if the user may upload to the gallery given their monthly usage.
+ * @param tier - The user's active pricing tier
+ * @param uploadsThisMonth - Number of gallery uploads already made this calendar month
+ * @returns true if tier.galleryUploads is -1 (unlimited) or uploadsThisMonth < limit
+ */
 export function canUploadToGallery(tier: PricingTier, uploadsThisMonth: number): boolean {
   if (tier.galleryUploads === -1) return true;
   return uploadsThisMonth < tier.galleryUploads;
