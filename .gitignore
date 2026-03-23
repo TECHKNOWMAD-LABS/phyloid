@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+.cache/
+
+# Environment / secrets — NEVER commit
+.env
+.env.*
+.env.local
+.env.*.local
+!.env.example
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Test output
+coverage/
+.nyc_output/
+
+# Vite / TypeScript
+*.tsbuildinfo
+vite.config.ts.timestamp*
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+Thumbs.db

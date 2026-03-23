@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0a0a2e" />
+  <!-- Content Security Policy: restrict sources to self; allow Three.js WebGL workers -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self' blob:;" />
   <meta name="description" content="Phyloid — Generate and explore fitness-mapped 3D phylogenetic organisms" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <title>Phyloid — 3D Fitness Organisms</title>
