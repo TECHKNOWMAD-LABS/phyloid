@@ -20,10 +20,14 @@ export class PhyloidApp {
   }
 
   setTier(tierId: string): void {
-    this.tierId = tierId;
+    // Validate tier ID — silently fall back to free on unknown values
+    const knownIds = TIERS.map((t) => t.id);
+    this.tierId = knownIds.includes(tierId) ? tierId : "free";
   }
 
   generateFromPrompt(prompt: string): PhyloidGenome[] {
+    // Sanitize prompt — null/undefined/non-string → empty string (returns [])
+    if (typeof prompt !== "string") prompt = "";
     const tier = getTierById(this.tierId) ?? TIERS[0];
 
     let genomes = generateWorld(prompt);

@@ -49,10 +49,22 @@ const FITNESS_KEYWORDS: Record<string, WorldIntent["fitnessProfile"]> = {
 
 /**
  * Parse a natural-language prompt into a WorldIntent.
+ * Gracefully handles null/undefined/empty inputs and over-long strings.
  */
 export function parseWorldPrompt(prompt: string): WorldIntent {
+  // Input sanitization: handle null/undefined/non-string inputs
+  if (prompt === null || prompt === undefined || typeof prompt !== "string") {
+    prompt = "";
+  }
+  // Truncate excessively long prompts (>2048 chars) to avoid regex DoS
+  if (prompt.length > 2048) {
+    prompt = prompt.slice(0, 2048);
+  }
+  // Strip unicode control characters that could cause parsing issues
+  prompt = prompt.replace(/[\u0000-\u001F\u007F-\u009F]/g, " ");
+
   const lower = prompt.toLowerCase();
-  const tokens = lower.split(/\s+/);
+  const tokens = lower.split(/\s+/).filter(Boolean);
 
   // Count
   let organisms = 1;
@@ -108,9 +120,13 @@ export function generateFitness(
   vertexCount: number,
   profile: WorldIntent["fitnessProfile"],
 ): number[] {
+  // Guard: negative or non-finite count → return empty array
+  if (!isFinite(vertexCount) || vertexCount <= 0) return [];
+  // Cap at 100,000 vertices to prevent memory exhaustion
+  const count = Math.min(Math.floor(vertexCount), 100_000);
   const fitness: number[] = [];
-  for (let i = 0; i < vertexCount; i++) {
-    const t = vertexCount > 1 ? i / (vertexCount - 1) : 0.5;
+  for (let i = 0; i < count; i++) {
+    const t = count > 1 ? i / (count - 1) : 0.5;
     switch (profile) {
       case "random":
         fitness.push(Math.random());
@@ -131,9 +147,11 @@ export function generateFitness(
 
 /** Approximate vertex count for an IcosahedronGeometry at a given detail level */
 export function icosahedronVertexCount(detail: number): number {
+  // Guard: clamp detail to valid range 0-5
+  const clampedDetail = Math.max(0, Math.min(5, Math.floor(detail)));
   // Three.js IcosahedronGeometry: 10 * 4^detail + 2 unique vertices,
   // but BufferGeometry duplicates for flat faces ≈ 60 * 4^detail
-  return 60 * Math.pow(4, detail);
+  return 60 * Math.pow(4, clampedDetail);
 }
 
 /**
