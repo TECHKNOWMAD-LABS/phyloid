@@ -1,8 +1,17 @@
 {
   "name": "phyloid",
-  "version": "1.0.0",
-  "description": "3D fitness-mapped phylogenetic organisms — What the Phyloid",
+  "version": "0.1.0",
+  "description": "3D WebGL evolution simulator — fitness-mapped phylogenetic organisms via Three.js",
   "type": "module",
+  "author": "TechKnowMad Labs <admin@techknowmad.ai>",
+  "homepage": "https://github.com/TECHKNOWMAD-LABS/phyloid",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TECHKNOWMAD-LABS/phyloid.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TECHKNOWMAD-LABS/phyloid/issues"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
