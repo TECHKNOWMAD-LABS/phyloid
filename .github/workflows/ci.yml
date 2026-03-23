@@ -1,4 +1,4 @@
-name: CI — Cloudflare Pages
+name: CI — Test · Lint · Security · Deploy
 
 on:
   push:
@@ -7,19 +7,87 @@ on:
     branches: [main]
 
 jobs:
-  test-and-deploy:
+  # ── Job 1: Lint ────────────────────────────────────────────────────────────
+  lint:
+    name: Lint (ESLint + TypeScript)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: npm
 
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
+      - name: Install dependencies
+        run: npm install --include=dev
+
+      - name: Run ESLint
+        run: npm run lint
+
+  # ── Job 2: Test ────────────────────────────────────────────────────────────
+  test:
+    name: Unit Tests (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --include=dev
+
+      - name: Run tests
+        run: npm test
+
+  # ── Job 3: Security ────────────────────────────────────────────────────────
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --include=dev
+
+      - name: Secret scan
+        run: node scripts/security-scan.mjs
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
+  # ── Job 4: Build + Deploy ──────────────────────────────────────────────────
+  build-and-deploy:
+    name: Build + Deploy to Cloudflare Pages
+    runs-on: ubuntu-latest
+    needs: [lint, test, security]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --include=dev
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_STRIPE_PRICE_PRO: ${{ secrets.VITE_STRIPE_PRICE_PRO }}
+          VITE_STRIPE_PRICE_ENTERPRISE: ${{ secrets.VITE_STRIPE_PRICE_ENTERPRISE }}
 
       - name: Deploy to Cloudflare Pages
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'

@@ -49,14 +49,10 @@ export class PhyloidApp {
       this.genomes.push(genome);
     }
 
-    // Spread organisms in a circle
+    // Spread organisms in a circle — positions managed by adapter meshes (auto-rotate for now)
     const count = this.genomes.length;
-    this.genomes.forEach((g, i) => {
-      const angle = (i / count) * Math.PI * 2;
-      const radius = count > 1 ? 2 + count * 0.15 : 0;
-      const x = Math.cos(angle) * radius;
-      const z = Math.sin(angle) * radius;
-      // Position is set via the mesh in the adapter; for now organisms auto-rotate
+    this.genomes.forEach((_g, _i) => {
+      // TODO: apply angle/radius positioning once adapter exposes setPosition()
     });
 
     this.engine.setCameraPosition(0, 2, 5 + count * 0.3);

@@ -60,7 +60,8 @@ export function parseWorldPrompt(prompt: string): WorldIntent {
   if (prompt.length > 2048) {
     prompt = prompt.slice(0, 2048);
   }
-  // Strip unicode control characters that could cause parsing issues
+  // Strip unicode control characters (C0: 0x00-0x1F, DEL: 0x7F, C1: 0x80-0x9F)
+  // eslint-disable-next-line no-control-regex
   prompt = prompt.replace(/[\u0000-\u001F\u007F-\u009F]/g, " ");
 
   const lower = prompt.toLowerCase();
