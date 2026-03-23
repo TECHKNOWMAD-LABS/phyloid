@@ -79,43 +79,34 @@ export function parseWorldPrompt(prompt: string): WorldIntent {
     organisms = 5;
   }
 
-  // Detail
+  // Single-pass token scan for detail, fitnessProfile, color, and scale keywords
+  // (avoids 3 separate O(n) iterations over the token list)
   let detail = 2;
-  for (const token of tokens) {
-    if (token in DETAIL_KEYWORDS) {
-      detail = DETAIL_KEYWORDS[token];
-      break;
-    }
-  }
-
-  // Fitness profile
   let fitnessProfile: WorldIntent["fitnessProfile"] = "random";
-  for (const token of tokens) {
-    if (token in FITNESS_KEYWORDS) {
-      fitnessProfile = FITNESS_KEYWORDS[token];
-      break;
-    }
-  }
-
-  // Color
   let colorHint: [number, number, number] | null = null;
-  for (const token of tokens) {
-    if (token in COLOR_MAP) {
-      colorHint = COLOR_MAP[token];
-      break;
-    }
-  }
-
-  // Scale
   let scale = 1;
-  if (lower.includes("tiny") || lower.includes("small")) scale = 0.4;
-  else if (lower.includes("large") || lower.includes("big") || lower.includes("huge")) scale = 1.8;
-  else if (lower.includes("giant") || lower.includes("massive")) scale = 2.5;
+
+  for (const token of tokens) {
+    if (detail === 2 && token in DETAIL_KEYWORDS) detail = DETAIL_KEYWORDS[token];
+    if (fitnessProfile === "random" && token in FITNESS_KEYWORDS) fitnessProfile = FITNESS_KEYWORDS[token];
+    if (colorHint === null && token in COLOR_MAP) colorHint = COLOR_MAP[token];
+    // Scale keywords (checked once via token set)
+    if (token === "tiny" || token === "small") scale = 0.4;
+    else if (token === "large" || token === "big" || token === "huge") { if (scale === 1) scale = 1.8; }
+    else if (token === "giant" || token === "massive") scale = 2.5;
+  }
 
   return { organisms, detail, fitnessProfile, colorHint, scale };
 }
 
-/** Generate fitness values for a given vertex count and profile */
+/**
+ * Generate fitness values for a given vertex count and profile.
+ *
+ * Performance notes:
+ * - Pre-allocates the result array once (avoids repeated Array.push resizes)
+ * - For deterministic profiles (uniform, gradient, spiky), this is O(n) with
+ *   tight inner loops — no branching per element for uniform/spiky
+ */
 export function generateFitness(
   vertexCount: number,
   profile: WorldIntent["fitnessProfile"],
@@ -124,26 +115,37 @@ export function generateFitness(
   if (!isFinite(vertexCount) || vertexCount <= 0) return [];
   // Cap at 100,000 vertices to prevent memory exhaustion
   const count = Math.min(Math.floor(vertexCount), 100_000);
-  const fitness: number[] = [];
-  for (let i = 0; i < count; i++) {
-    const t = count > 1 ? i / (count - 1) : 0.5;
-    switch (profile) {
-      case "random":
-        fitness.push(Math.random());
-        break;
-      case "gradient":
-        fitness.push(t);
-        break;
-      case "uniform":
-        fitness.push(0.7);
-        break;
-      case "spiky":
-        fitness.push(i % 3 === 0 ? 0.95 : 0.2);
-        break;
+
+  // Pre-allocate to avoid incremental Array growth
+  const fitness = new Array<number>(count);
+
+  switch (profile) {
+    case "random":
+      for (let i = 0; i < count; i++) fitness[i] = Math.random();
+      break;
+    case "gradient": {
+      const inv = count > 1 ? 1 / (count - 1) : 0;
+      for (let i = 0; i < count; i++) fitness[i] = count > 1 ? i * inv : 0.5;
+      break;
     }
+    case "uniform":
+      fitness.fill(0.7);
+      break;
+    case "spiky":
+      for (let i = 0; i < count; i++) fitness[i] = i % 3 === 0 ? 0.95 : 0.2;
+      break;
   }
+
   return fitness;
 }
+
+/**
+ * Memoized lookup table for icosahedron vertex counts (detail levels 0-5).
+ * Avoids repeated Math.pow calls — only 6 distinct values possible.
+ */
+const _VERTEX_COUNT_CACHE: ReadonlyArray<number> = [0, 1, 2, 3, 4, 5].map(
+  (d) => 60 * Math.pow(4, d),
+);
 
 /** Approximate vertex count for an IcosahedronGeometry at a given detail level */
 export function icosahedronVertexCount(detail: number): number {
@@ -151,7 +153,7 @@ export function icosahedronVertexCount(detail: number): number {
   const clampedDetail = Math.max(0, Math.min(5, Math.floor(detail)));
   // Three.js IcosahedronGeometry: 10 * 4^detail + 2 unique vertices,
   // but BufferGeometry duplicates for flat faces ≈ 60 * 4^detail
-  return 60 * Math.pow(4, clampedDetail);
+  return _VERTEX_COUNT_CACHE[clampedDetail];
 }
 
 /**
@@ -159,24 +161,34 @@ export function icosahedronVertexCount(detail: number): number {
  */
 export function generateWorld(prompt: string): PhyloidGenome[] {
   const intent = parseWorldPrompt(prompt);
-  const genomes: PhyloidGenome[] = [];
   const vertCount = icosahedronVertexCount(intent.detail);
+
+  // Performance: deterministic profiles (uniform, gradient, spiky) produce identical
+  // fitness arrays for all organisms in the same world — generate once and share.
+  // Random profile MUST be unique per organism, so we generate per-organism only then.
+  const sharedFitness: number[] | null =
+    intent.fitnessProfile !== "random"
+      ? generateFitness(vertCount, intent.fitnessProfile)
+      : null;
+
+  // Pre-allocate result array
+  const genomes: PhyloidGenome[] = new Array(intent.organisms);
 
   for (let i = 0; i < intent.organisms; i++) {
     const color: [number, number, number] = intent.colorHint
-      ? [...intent.colorHint]
+      ? [intent.colorHint[0], intent.colorHint[1], intent.colorHint[2]]
       : [Math.random() * 0.8 + 0.1, Math.random() * 0.8 + 0.1, Math.random() * 0.8 + 0.1];
 
-    genomes.push(
-      defaultGenome({
-        id: createGenomeId(),
-        name: `Phyloid-${i + 1}`,
-        detail: intent.detail,
-        fitness: generateFitness(vertCount, intent.fitnessProfile),
-        color,
-        scale: intent.scale * (0.8 + Math.random() * 0.4),
-      }),
-    );
+    const fitness = sharedFitness ?? generateFitness(vertCount, "random");
+
+    genomes[i] = defaultGenome({
+      id: createGenomeId(),
+      name: `Phyloid-${i + 1}`,
+      detail: intent.detail,
+      fitness,
+      color,
+      scale: intent.scale * (0.8 + Math.random() * 0.4),
+    });
   }
 
   return genomes;
