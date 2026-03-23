@@ -1,0 +1,46 @@
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - v*
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  REGISTRY: 'https://registry.npmjs.org'
+
+jobs:
+  publish:
+    name: Publish @techknowmad/phyloid
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: ${{ env.REGISTRY }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run test suite
+        run: npm test -- --coverage
+
+      - name: Build package
+        run: npm run build
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
