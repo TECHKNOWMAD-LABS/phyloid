@@ -10,6 +10,11 @@ env:
   NODE_VERSION: '20'
   REGISTRY: 'https://registry.npmjs.org'
 
+# Restrict GITHUB_TOKEN to read-only at workflow level. Jobs that need
+# write access (publish, deploy) declare their own `permissions:` block.
+permissions:
+  contents: read
+
 jobs:
   publish:
     name: Publish @techknowmad/phyloid
