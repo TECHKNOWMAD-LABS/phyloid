@@ -34,7 +34,7 @@
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@stripe/stripe-js": "^8.11.0",
+    "@stripe/stripe-js": "^9.5.0",
     "@types/three": "^0.184.1",
     "@typescript-eslint/eslint-plugin": "^8.59.3",
     "@typescript-eslint/parser": "^8.59.3",
