@@ -26,41 +26,53 @@ vi.mock("three", () => {
   const mockMaterial = { dispose: mockDisposeMaterial };
 
   return {
-    Scene: vi.fn(() => ({
+    Scene: vi.fn(function Scene() {
+      return {
       add: vi.fn(),
       remove: vi.fn(),
       background: null,
-    })),
-    PerspectiveCamera: vi.fn(() => ({
+      };
+    }),
+    PerspectiveCamera: vi.fn(function PerspectiveCamera() {
+      return {
       position: { set: vi.fn() },
       lookAt: vi.fn(),
       aspect: 1,
       updateProjectionMatrix: vi.fn(),
-    })),
-    WebGLRenderer: vi.fn(() => ({
+      };
+    }),
+    WebGLRenderer: vi.fn(function WebGLRenderer() {
+      return {
       setSize: vi.fn(),
       setPixelRatio: vi.fn(),
       render: vi.fn(),
       dispose: vi.fn(),
       domElement: { parentNode: null },
       info: { render: { calls: 5, triangles: 1200 } },
-    })),
-    Clock: vi.fn(() => ({
+      };
+    }),
+    Clock: vi.fn(function Clock() {
+      return {
       getDelta: vi.fn(() => 0.016),
-    })),
-    AmbientLight: vi.fn(() => ({ position: { set: vi.fn() } })),
-    DirectionalLight: vi.fn(() => ({ position: { set: vi.fn() } })),
-    PointLight: vi.fn(() => ({ position: { set: vi.fn() } })),
-    Color: vi.fn(),
-    IcosahedronGeometry: vi.fn(() => mockGeometry),
-    MeshPhongMaterial: vi.fn(() => mockMaterial),
-    Mesh: vi.fn((geometry: unknown, material: unknown) => ({
+      };
+    }),
+    AmbientLight: vi.fn(function AmbientLight() { return { position: { set: vi.fn() } }; }),
+    DirectionalLight: vi.fn(function DirectionalLight() { return { position: { set: vi.fn() } }; }),
+    PointLight: vi.fn(function PointLight() { return { position: { set: vi.fn() } }; }),
+    Color: vi.fn(function Color() {}),
+    IcosahedronGeometry: vi.fn(function IcosahedronGeometry() { return mockGeometry; }),
+    MeshPhongMaterial: vi.fn(function MeshPhongMaterial() { return mockMaterial; }),
+    Mesh: vi.fn(function Mesh(geometry: unknown, material: unknown) {
+      return {
       name: "",
       rotation: { x: 0, y: 0 },
       geometry,
       material,
-    })),
-    BufferAttribute: vi.fn((arr: Float32Array, size: number) => ({ array: arr, itemSize: size })),
+      };
+    }),
+    BufferAttribute: vi.fn(function BufferAttribute(arr: Float32Array, size: number) {
+      return { array: arr, itemSize: size };
+    }),
   };
 });
 

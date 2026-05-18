@@ -18,12 +18,20 @@ export async function redirectToCheckout(tierId: string): Promise<void> {
     throw new Error(`No Stripe price configured for tier: ${tierId}`);
   }
 
-  // @ts-expect-error — @stripe/stripe-js loaded dynamically at runtime only
   const { loadStripe } = await import(/* @vite-ignore */ "@stripe/stripe-js");
   const stripe = await loadStripe(key);
   if (!stripe) throw new Error("Failed to load Stripe");
 
-  const { error } = await stripe.redirectToCheckout({
+  type CheckoutRedirectStripe = {
+    redirectToCheckout(options: {
+      lineItems: Array<{ price: string; quantity: number }>;
+      mode: "subscription";
+      successUrl: string;
+      cancelUrl: string;
+    }): Promise<{ error?: { message?: string } }>;
+  };
+
+  const { error } = await (stripe as unknown as CheckoutRedirectStripe).redirectToCheckout({
     lineItems: [{ price: priceId, quantity: 1 }],
     mode: "subscription",
     successUrl: `${window.location.origin}/success`,
