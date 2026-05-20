@@ -94,8 +94,22 @@ jobs:
           VITE_STRIPE_PRICE_PRO: ${{ secrets.VITE_STRIPE_PRICE_PRO }}
           VITE_STRIPE_PRICE_ENTERPRISE: ${{ secrets.VITE_STRIPE_PRICE_ENTERPRISE }}
 
-      - name: Deploy to Cloudflare Pages
+      - name: Check Cloudflare credentials
+        id: cf_check
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+          HAS_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          if [ "$HAS_TOKEN" = "true" ] && [ "$HAS_ACCOUNT" = "true" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID not set — skipping deploy. Add them in repo Settings → Secrets and variables → Actions."
+          fi
+
+      - name: Deploy to Cloudflare Pages
+        if: steps.cf_check.outputs.ready == 'true'
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
