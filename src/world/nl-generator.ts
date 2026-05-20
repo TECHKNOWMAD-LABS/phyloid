@@ -88,9 +88,9 @@ export function parseWorldPrompt(prompt: string): WorldIntent {
   let scale = 1;
 
   for (const token of tokens) {
-    if (detail === 2 && token in DETAIL_KEYWORDS) detail = DETAIL_KEYWORDS[token];
-    if (fitnessProfile === "random" && token in FITNESS_KEYWORDS) fitnessProfile = FITNESS_KEYWORDS[token];
-    if (colorHint === null && token in COLOR_MAP) colorHint = COLOR_MAP[token];
+    if (detail === 2 && Object.hasOwn(DETAIL_KEYWORDS, token)) detail = DETAIL_KEYWORDS[token];
+    if (fitnessProfile === "random" && Object.hasOwn(FITNESS_KEYWORDS, token)) fitnessProfile = FITNESS_KEYWORDS[token];
+    if (colorHint === null && Object.hasOwn(COLOR_MAP, token)) colorHint = COLOR_MAP[token];
     // Scale keywords (checked once via token set)
     if (token === "tiny" || token === "small") scale = 0.4;
     else if (token === "large" || token === "big" || token === "huge") { if (scale === 1) scale = 1.8; }
